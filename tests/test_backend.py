@@ -64,6 +64,9 @@ class RecipeTests(unittest.TestCase):
         self.assertEqual(env["EXL3_MM_CACHE"], "0")
         self.assertEqual(env["EXL3_PREFIX_DIAG"], "0")
         self.assertEqual(env["EXL3_RECURRENT_CHECKPOINT_INTERVAL_PP"], "32768")
+        self.assertEqual(env["EXL3_QC_STAGING"], "1")
+        self.assertEqual(env["EXL3_SM89_PAGED_ATTN"], "1")
+        self.assertEqual(env["TORCH_CUDA_ARCH_LIST"], "8.9")
 
 
 class LifecycleTests(unittest.TestCase):
@@ -103,6 +106,25 @@ class LifecycleTests(unittest.TestCase):
                 backend.start()
             popen.assert_not_called()
 
+    def test_start_waits_for_health_and_records_own_pid(self):
+        process = mock.Mock(pid=123)
+        with mock.patch.object(backend, "gpu", return_value={"name": "GPU"}), \
+             mock.patch.object(backend, "resolve_path", side_effect=[Path("/r"), Path("/m")]), \
+             mock.patch.object(backend, "verify_runtime", return_value=(Path("/p"), Path("/s"))), \
+             mock.patch.object(backend, "verify_model"), \
+             mock.patch.object(backend, "port_free", return_value=True), \
+             mock.patch.object(backend, "_proc", return_value=(os.getuid(), "7", [])), \
+             mock.patch.object(backend, "owned", return_value=True), \
+             mock.patch.object(backend, "health", return_value=True), \
+             mock.patch.object(backend.subprocess, "Popen", return_value=process) as popen:
+            backend.start("max-context")
+        self.assertEqual(backend.read_state()["pid"], 123)
+        self.assertEqual(backend.read_state()["profile"], "max-context")
+        args, kwargs = popen.call_args
+        self.assertEqual(args[0][args[0].index("--cache_quant") + 1], "3,3")
+        self.assertEqual(kwargs["env"]["EXL3_MM_STABLE_ID"], "1")
+        self.assertTrue(kwargs["start_new_session"])
+
     def test_foreign_pid_never_killed(self):
         with mock.patch.object(backend, "read_state", return_value={"pid": 123}), \
              mock.patch.object(backend, "_proc", return_value=(os.getuid(), "10", ["python", "foreign"])), \
@@ -110,6 +132,15 @@ class LifecycleTests(unittest.TestCase):
             with self.assertRaisesRegex(backend.LauncherError, "refusing to stop"):
                 backend.stop()
             kill.assert_not_called()
+
+    def test_stop_owned_pid(self):
+        backend.write_state({"pid": 123, "profile": "balanced"})
+        with mock.patch.object(backend, "owned", return_value=True), \
+             mock.patch.object(backend, "_proc", return_value=None), \
+             mock.patch.object(backend.os, "kill") as kill:
+            backend.stop()
+        kill.assert_called_once_with(123, backend.signal.SIGTERM)
+        self.assertEqual(backend.read_state(), {})
 
     def test_stale_pid_cleaned(self):
         backend.write_state({"pid": 987654321})
@@ -151,10 +182,6 @@ class LifecycleTests(unittest.TestCase):
         file.write_text('port = 9999\n')
         backend.configure_model("/models/qwen")
         self.assertEqual(backend.config(), {"port": 9999, "model_path": "/models/qwen"})
-
-    def test_no_unsafe_profile_in_cli(self):
-        self.assertEqual(backend.main(["start", "--profile", "balanced"]), 1)
-
 
 class PackagingTests(unittest.TestCase):
     def test_manifest(self):

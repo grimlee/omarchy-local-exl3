@@ -22,6 +22,7 @@ Panel {
                        stable_mm: false, stable_mm_implementation: false, profile: "balanced",
                        gpu_name: null, vram_used_mib: null, vram_total_mib: null, endpoint: "http://127.0.0.1:8881/v1" })
   property string selectedProfile: "balanced"
+  property bool receivedStatus: false
   property string message: ""
   property bool editingPath: false
   readonly property bool busy: action.running
@@ -41,8 +42,8 @@ Panel {
       if (!value || typeof value.running !== "boolean") return
       var wasRunning = snap.running
       snap = value
-      if (!wasRunning && !value.running) return
-      selectedProfile = value.profile
+      if (!receivedStatus || wasRunning || value.running) selectedProfile = value.profile
+      receivedStatus = true
     } catch (e) { message = "Could not read status" }
   }
   onOpenedChanged: if (opened) refresh()

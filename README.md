@@ -11,7 +11,7 @@ Stable MM Identity keeps repeated multimodal prefixes stable in long running Pi 
 
 ## Install and use
 
-Requires Omarchy Quattro, Python 3.11+, a working NVIDIA driver, the validated ExLlamaV3 1.5.0 checkout/venv with the Stable MM implementation, and the model files. No Docker or root is required.
+Requires Omarchy Quattro, Python 3.11+, a working NVIDIA driver, the validated ExLlamaV3 1.5.0 checkout with the Stable MM implementation, its SM89 paged-attention venv and prebuilt extension, and the model files. The launcher reproduces the tested SM89 paged attention and QC staging settings. No Docker or root is required.
 
 ```bash
 git clone https://github.com/grimlee/omarchy-local-exl3.git

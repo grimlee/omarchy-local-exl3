@@ -40,6 +40,9 @@ esac
         self.runtime = self.home / "runtime/keep-runtime"
         self.model.mkdir(parents=True)
         self.runtime.mkdir(parents=True)
+        self.pi = self.home / ".pi/agent/models.json"
+        self.pi.parent.mkdir(parents=True)
+        self.pi.write_text('{"keep":true}\n')
 
     def test_install_twice_and_uninstall_preserves_data(self):
         plugin = self.home / "config/omarchy/plugins/grimlee.local-exl3"
@@ -55,6 +58,7 @@ esac
         self.assertFalse((self.home / "enabled").exists())
         self.assertTrue(self.model.is_dir())
         self.assertTrue(self.runtime.is_dir())
+        self.assertEqual(self.pi.read_text(), '{"keep":true}\n')
 
 
 if __name__ == "__main__":

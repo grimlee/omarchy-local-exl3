@@ -103,11 +103,10 @@ def resolve_path(kind, cfg):
 
 
 def runtime_python(runtime):
-    for name in (".venv-exl3-1.5.0", ".venv-exl3-1.5.0-sm89-attn"):
-        path = runtime / name / "bin/python"
-        if path.is_file() and os.access(path, os.X_OK):
-            return path
-    raise LauncherError("Validated ExLlamaV3 1.5.0 venv not found in runtime directory")
+    path = runtime / ".venv-exl3-1.5.0-sm89-attn/bin/python"
+    if path.is_file() and os.access(path, os.X_OK):
+        return path
+    raise LauncherError("Validated ExLlamaV3 1.5.0 SM89 paged-attention venv not found")
 
 
 def verify_runtime(runtime):
@@ -122,7 +121,20 @@ def verify_runtime(runtime):
     stable = registry.read_text()
     if "EXL3_MM_STABLE_ID" not in source or "StableMMIdentityRegistry" not in source or "_stable_retag_embeddings" not in source or "class StableMMIdentityRegistry" not in stable or "from .registry import StableMMIdentityRegistry" not in package.read_text():
         raise LauncherError("Stable MM implementation not present in runtime")
-    return runtime_python(runtime), server
+    extension = runtime / "experiments/sm89-paged-attention/candidate-torch-extensions/exllamav3_ext/exllamav3_ext.so"
+    if not extension.is_file() or extension.stat().st_size == 0:
+        raise LauncherError("Validated SM89 paged-attention CUDA extension not found")
+    python = runtime_python(runtime)
+    try:
+        check = subprocess.run(
+            [str(python), "-c", "from importlib.metadata import distribution; from pathlib import Path; d=distribution('exllamav3'); p=Path(d.locate_file('exllamav3/constants.py')); print(d.version); print(p.read_text().splitlines()[1])"],
+            capture_output=True, text=True, timeout=12,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise LauncherError(f"Validated ExLlamaV3 venv could not be checked: {exc}") from exc
+    if check.returncode or check.stdout.splitlines() != ["1.5.0", "PAGE_SIZE = 256"]:
+        raise LauncherError("Validated ExLlamaV3 1.5.0 / 256-page runtime not found")
+    return python, server
 
 
 def verify_model(model):
@@ -154,7 +166,8 @@ def command(runtime, python, server, model, profile, port):
     return [str(python), "-u", str(server), "--model", str(model), "--model_id", MODEL_ID,
             "--host", "127.0.0.1", "--port", str(port), "--cache_size", str(p["context"]),
             "--grid_size", str(m["grid_size_gb"]), "--vision", "auto", "--draft_model", "mtp",
-            "--cache_quant", f"{p['kv_bits_k']},{p['kv_bits_v']}", "--chunk_size", "4096", "--ui", "off"]
+            "--cache_quant", f"{p['kv_bits_k']},{p['kv_bits_v']}", "--chunk_size", "4096",
+            "--image_max_pixels", "1048576", "--harness_port", "3081", "--ui", "off"]
 
 
 def launch_env(runtime):
@@ -162,8 +175,12 @@ def launch_env(runtime):
     # Override inherited process values. A flag alone cannot add missing source code.
     env.update(EXL3_MM_STABLE_ID="1", EXL3_MM_CACHE="0", EXL3_PREFIX_DIAG="0",
                EXL3_PREFIX_TRACE="0", EXL3_RECURRENT_CHECKPOINT_INTERVAL_PP="32768",
-               EXL3_CHUNK_SIZE="4096")
-    env["PYTHONPATH"] = str(runtime) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+               EXL3_CHUNK_SIZE="4096", EXL3_QC_STAGING="1", EXL3_NO_FUSED_RECONSTRUCT="0",
+               EXL3_SM89_PAGED_ATTN="1", TORCH_CUDA_ARCH_LIST="8.9",
+               TORCH_EXTENSIONS_DIR=str(runtime / "experiments/sm89-paged-attention/candidate-torch-extensions"),
+               CXXFLAGS="-Wno-error=template-body")
+    ext = runtime / "experiments/sm89-paged-attention/candidate-torch-extensions/exllamav3_ext"
+    env["PYTHONPATH"] = os.pathsep.join([str(ext), str(runtime)] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
     return env
 
 
