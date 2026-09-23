@@ -1,0 +1,5 @@
+# Copy to ~/.config/omarchy-local-exl3/config.toml only to override detection.
+# model_path = "/absolute/path/to/Huihui-Qwen3.8-27B-abliterated-EXL3-3.0bpw"
+# runtime_path = "/absolute/path/to/qwen3.8-27b-eval"
+# port = 8881
+# default_profile = "balanced"

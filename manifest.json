@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "grimlee.local-exl3",
+  "name": "Local EXL3",
+  "version": "0.1.0",
+  "author": "grimlee",
+  "license": "MIT",
+  "description": "Launch the validated local Qwen3.8 EXL3 profiles from the Omarchy bar.",
+  "kinds": ["bar-widget"],
+  "activation": "on-demand",
+  "entryPoints": {"barWidget": "ui/Panel.qml"},
+  "barWidget": {
+    "displayName": "Local EXL3",
+    "description": "Qwen3.8 EXL3 with Balanced and Max Context profiles",
+    "category": "AI",
+    "aliases": ["exl3", "qwen3.8"],
+    "defaultSection": "right",
+    "allowMultiple": false
+  }
+}
