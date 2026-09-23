@@ -254,6 +254,9 @@ def health(port):
 def port_free(port):
     try:
         with socket.socket() as sock:
+            # A recently stopped server may leave TIME-WAIT connections on this
+            # port. Those are not listeners and must not block profile changes.
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.bind(("127.0.0.1", port))
             return True
     except OSError:

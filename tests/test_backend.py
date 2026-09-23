@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import socket
 import tempfile
 import unittest
 from unittest import mock
@@ -105,6 +106,25 @@ class LifecycleTests(unittest.TestCase):
             with self.assertRaisesRegex(backend.LauncherError, "occupied"):
                 backend.start()
             popen.assert_not_called()
+
+    def test_port_probe_rejects_foreign_listener(self):
+        with socket.socket() as listener:
+            listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            listener.bind(("127.0.0.1", 0))
+            listener.listen()
+            self.assertFalse(backend.port_free(listener.getsockname()[1]))
+
+    def test_port_probe_allows_recently_closed_connection(self):
+        with socket.socket() as listener, socket.socket() as client:
+            listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            listener.bind(("127.0.0.1", 0))
+            port = listener.getsockname()[1]
+            listener.listen()
+            client.connect(("127.0.0.1", port))
+            accepted, _ = listener.accept()
+            accepted.close()  # Server closes first, leaving its port in TIME-WAIT.
+            client.recv(1)
+        self.assertTrue(backend.port_free(port))
 
     def test_start_waits_for_health_and_records_own_pid(self):
         process = mock.Mock(pid=123)

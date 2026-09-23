@@ -89,7 +89,7 @@ Panel {
       anchors.left: parent.left; anchors.right: parent.right
       anchors.margins: Style.space(16)
       spacing: Style.space(10)
-      Text { text: "LOCAL EXL3"; color: root.ink; font.family: root.mono; font.pixelSize: Style.font.title }
+      Text { text: "LOCAL EXL3"; color: root.ink; font.family: root.mono; font.pixelSize: Style.font.title || Style.font.body || 14 }
       Text { width: parent.width; text: root.snap.model || "Qwen3.8-27B EXL3"; color: root.ink; font.family: root.mono; wrapMode: Text.WordWrap }
       Text {
         width: parent.width
