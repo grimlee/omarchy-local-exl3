@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "model": {
+    "id": "qwen38-27b-exl3",
+    "name": "Qwen3.8-27B EXL3 3.0bpw",
+    "directory_name": "Huihui-Qwen3.8-27B-abliterated-EXL3-3.0bpw",
+    "runtime": "exllamav3",
+    "api_model_id": "exllama-v3",
+    "grid_size_gb": 14.7,
+    "vision": "auto",
+    "draft_model": "mtp",
+    "page_size": 256,
+    "chunk_size": 4096,
+    "recurrent_checkpoint": 32768
+  },
+  "default_profile": "balanced",
+  "profiles": {
+    "balanced": {"name": "Balanced", "kv_bits_k": 4, "kv_bits_v": 4, "context": 117760, "stable_mm": true, "mm_cache": false, "prefix_diag": false},
+    "max-context": {"name": "Max Context", "kv_bits_k": 3, "kv_bits_v": 3, "context": 150016, "stable_mm": true, "mm_cache": false, "prefix_diag": false}
+  }
+}
